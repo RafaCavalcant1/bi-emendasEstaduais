@@ -1,29 +1,35 @@
-# -- coding: utf-8 --
-"""
-BI - Emendas (Streamlit)
-- Filtros encadeados (1º → 4º) com opção (Todos)
-- Indicadores
-- Abas: Visão Geral, Por Parlamentar, Temporal, Mapa de Calor, Execução
-- Seletor de tipo de gráfico para cada aba
-- Exportação do recorte filtrado (CSV)
-- Visão Geral também mostra Por Parlamentar, Temporal, Mapa de Calor e Execução (subseções abertas)
-- FIX: keys únicos em todos os st.plotly_chart (evita StreamlitDuplicateElementId)
-"""
-
+import streamlit as st
+from auth import require_authentication, AuthManager, logout, init_session_state
 import unicodedata
 import pandas as pd
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 
-# ==========================
-# CONFIGURAÇÃO GERAL
-# ==========================
 st.set_page_config(page_title="BI - Emendas", page_icon="📊", layout="wide")
 
-# Carregar CSS personalizado
-with open("style.css", "r", encoding="utf-8") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+init_session_state()
+auth_manager = AuthManager(credentials_file="credentials.json")
+
+if not require_authentication(auth_manager, logo_path="logo.svg"):
+    st.stop()
+
+with st.container():
+    col_user, col_space, col_logout = st.columns([3, 2, 1])
+    with col_user:
+        username = st.session_state.username
+        user_info = st.session_state.user_info
+        st.markdown(f"### 👤 {user_info['name']} <span style='color: #666; font-size: 0.9em;'>({user_info['role']})</span>", unsafe_allow_html=True)
+    with col_logout:
+        if st.button("🚪 Logout"):
+            logout()
+
+st.divider()
+
+try:
+    with open("style.css", "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+except FileNotFoundError:
+    pass
 
 SHEET_ID = "1fyzyrSsRuUm8d6jNSeaTIVm8Zps2jLAO5u_xxUF5ox0"
 GID = "1186502103"
@@ -40,9 +46,6 @@ CONFIG_MODEBAR = {
     "modeBarButtonsToAdd": ["toImage"]
 }
 
-# ==========================
-# HELPERS
-# ==========================
 def normalizar_txt(s: str) -> str:
     """Remove acentos e padroniza minúsculas para mapeamentos de texto."""
     s = str(s).strip().lower()
@@ -220,10 +223,7 @@ def render_execucao(df_filtrado: pd.DataFrame, key_prefix: str):
         st.plotly_chart(fig_exec, use_container_width=True, key=f"{key_prefix}_exec", config=CONFIG_MODEBAR)
     else:
         st.info("Coluna 'EXECUÇÃO DA EMENDA' não encontrada.")
-        
-# ==========================
-# CARGA E PRÉ-PROCESSAMENTO
-# ==========================
+
 try:
     df = carregar_dados(CSV_URL)
 except Exception as e:
@@ -246,9 +246,6 @@ if "VALOR" in df.columns:
 if "DATA OB MS" in df.columns:
     df["DATA OB MS"] = pd.to_datetime(df["DATA OB MS"], errors="coerce", dayfirst=True)
 
-# ==========================
-# FILTROS (SIDEBAR) — COM (Todos)
-# ==========================
 st.sidebar.header("Filtros")
 
 def select_valor_com_todos(rotulo: str, serie: pd.Series):
@@ -313,12 +310,6 @@ valor_selecionado = " • ".join([x for x in [
     fmt(filtro4, valor4),
 ] if x])
 
-# ==========================
-# TÍTULO / AÇÕES
-# ==========================
-
-# --- Adicionar imagem institucional no topo (lado direito) ---
-
 col1, col2 = st.columns([4, 1])
 
 with col1:
@@ -328,8 +319,10 @@ with col1:
 
 with col2:
     st.markdown("<div style='margin-top: 35px;'></div>", unsafe_allow_html=True)
-    st.image("logo.svg", width=200)
-
+    try:
+        st.image("logo.svg", width=200)
+    except:
+        pass
 
 st.download_button(
     "⬇️ Exportar Dados",
@@ -342,9 +335,6 @@ st.subheader("Dados Filtrados")
 st.caption(f"{len(df_filtrado)} registros exibidos após os filtros aplicados.")
 st.dataframe(df_filtrado, use_container_width=True)
 
-# ==========================
-# CONFIGURAÇÃO DE GRÁFICOS (COM SELECTOR)
-# ==========================
 st.sidebar.header("Gráficos (configuração)")
 
 candidatos_dim = [c for c in df_filtrado.columns if c not in ["VALOR", "DATA OB MS"]]
@@ -370,14 +360,10 @@ top_n_ano = st.sidebar.slider("Top N Ano:", 3, 50, 5)
 # Execução
 tipo_grafico_exec = "Barras"
 
-# ==========================
-# ABAS
-# ==========================
 tab_visao, tab_parlamentar, tab_heatmap, tab_execucao = st.tabs(
     ["📊 Panorama Geral", "🧑‍⚖️ Análise por Parlamentar", "📅 Status por ano", "⚙️ Situação das Emendas"]
 )
 
-# ---- Aba: Visão Geral (subseções abertas) ----
 with tab_visao:
     base = agrega_por_dimensao(df_filtrado, dimensao_geral, metrica_geral).head(top_n_geral)
     grafico_generico(
@@ -392,14 +378,11 @@ with tab_visao:
 
     render_execucao(df_filtrado, key_prefix="vg_exec")
 
-# ---- Aba: Por Parlamentar ----
 with tab_parlamentar:
     render_por_parlamentar(df_filtrado, top_n_parl, tipo_grafico_parl, key_prefix="tab_parl")
 
-# ---- Aba: Barra Agrupada ----
 with tab_heatmap:
     render_barraAgrupada(df_filtrado, agregacao_hm, top_n_ano, key_prefix="tab_hm")
 
-# ---- Aba: Execução ----
 with tab_execucao:
-    render_execucao(df_filtrado,  key_prefix="tab_exec")
+    render_execucao(df_filtrado, key_prefix="tab_exec")
