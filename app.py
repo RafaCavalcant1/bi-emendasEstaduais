@@ -10,7 +10,7 @@ BI - Emendas (Streamlit)
 - FIX: keys únicos em todos os st.plotly_chart (evita StreamlitDuplicateElementId)
 """
 
-import unicodedata
+import unicodedata #teste
 import pandas as pd
 import streamlit as st
 import plotly.express as px
