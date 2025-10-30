@@ -1,15 +1,3 @@
-# -- coding: utf-8 --
-"""
-BI - Emendas (Streamlit)
-- Filtros encadeados (1º → 4º) com opção (Todos)
-- Indicadores
-- Abas: Visão Geral, Por Parlamentar, Temporal, Mapa de Calor, Execução
-- Seletor de tipo de gráfico para cada aba
-- Exportação do recorte filtrado (CSV)
-- Visão Geral também mostra Por Parlamentar, Temporal, Mapa de Calor e Execução (subseções abertas)
-- FIX: keys únicos em todos os st.plotly_chart (evita StreamlitDuplicateElementId)
-"""
-
 import streamlit as st
 from auth import require_authentication, AuthManager, logout, init_session_state
 import unicodedata
