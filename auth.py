@@ -297,15 +297,6 @@ def login_form(auth_manager: AuthManager, logo_path: str = "data/Vector.png"):
             </div>
             ''', unsafe_allow_html=True)
         
-        # Card do formulário
-        st.markdown('''
-        <div class="login-card">
-            <div class="login-header">
-                <h2>Acesso ao Sistema</h2>
-                <p>Digite suas credenciais para continuar</p>
-            </div>
-        </div>
-        ''', unsafe_allow_html=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
         

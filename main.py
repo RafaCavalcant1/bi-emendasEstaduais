@@ -20,7 +20,7 @@ with st.container():
         user_info = st.session_state.user_info
         st.markdown(f"### 👤 {user_info['name']} <span style='color: #666; font-size: 0.9em;'>({user_info['role']})</span>", unsafe_allow_html=True)
     with col_logout:
-        if st.button("🚪 Logout"):
+        if st.button("Logout"):
             logout()
 
 st.divider()
