@@ -1,6 +1,7 @@
 import streamlit as st
 from auth import require_authentication, AuthManager, logout, init_session_state
 import unicodedata
+from datetime import datetime
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -12,21 +13,43 @@ auth_manager = AuthManager(credentials_file="credentials.json")
 
 if not require_authentication(auth_manager, logo_path="logo.svg"):
     st.stop()
-
+# ===============================
+# 🔹 CABEÇALHO DO SISTEMA
+# ===============================
 with st.container():
-    col_user, col_space, col_logout = st.columns([3, 2, 1])
-    with col_user:
-        username = st.session_state.username
-        user_info = st.session_state.user_info
-        st.markdown(f"### 👤 {user_info['name']} <span style='color: #666; font-size: 0.9em;'>({user_info['role']})</span>", unsafe_allow_html=True)
-    with col_logout:
-        if st.button("Logout"):
-            logout()
+    st.markdown(
+        """
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 10px 10px 10px;
+        ">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 26px;">👤</span>
+                <h2 style="margin: 0; color: #0C2856;">SES-PE <span style="font-weight:400;">(sespe)</span></h2>
+            </div>
+            <form action="#" method="post">
+                <button type="submit" style="
+                    background-color: #004080;
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 6px 16px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
+                ">Logout</button>
+            </form>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 st.divider()
 
 try:
-    with open("style.css", "r", encoding="utf-8") as f:
+    with open("main_style.css", "r", encoding="utf-8") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 except FileNotFoundError:
     pass
@@ -248,13 +271,29 @@ if "DATA OB MS" in df.columns:
 
 st.sidebar.header("Filtros")
 
-def select_valor_com_todos(rotulo: str, serie: pd.Series):
-    """Select de valores com (Todos) que retorna None quando (Todos) for escolhido."""
+# --- FUNÇÃO PARA LIMPAR FILTROS ---
+def limpar_filtros():
+    # Apaga todas as variáveis relacionadas a filtros
+    for key in list(st.session_state.keys()):
+        if any(x in key.lower() for x in ["filtro", "escolha", "selectbox"]):
+            st.session_state.pop(key, None)
+    # Gera uma chave única para resetar selects
+    st.session_state["reset_key"] = datetime.now().timestamp()
+    st.rerun()
+
+# --- BOTÃO DE LIMPAR ---
+if st.sidebar.button("🧹 Limpar filtros"):
+    limpar_filtros()
+
+# --- Função auxiliar dos selects ---
+def select_valor_com_todos(rotulo: str, serie: pd.Series, key: str):
+    """Select com (Todos), retorna None quando selecionado."""
     valores_unicos = sorted(serie.dropna().unique().tolist())
     opcoes = ["(Todos)"] + valores_unicos
-    escolha = st.sidebar.selectbox(rotulo, opcoes)
+    escolha = st.sidebar.selectbox(rotulo, opcoes, key=key)
     return None if escolha == "(Todos)" else escolha
 
+# --- Configuração dos filtros ---
 PRIMEIRAS_OPCOES = ["Nº EMENDA", "SUBAÇÃO", "ANO DA EMENDA", "PARLAMENTAR"]
 opcoes_presentes = [c for c in PRIMEIRAS_OPCOES if c in df.columns]
 
@@ -264,40 +303,78 @@ if not opcoes_presentes:
     filtro1 = filtro2 = filtro3 = filtro4 = None
     valor1 = valor2 = valor3 = valor4 = None
 else:
-    filtro1 = st.sidebar.selectbox("1º filtro:", opcoes_presentes)
-    valor1 = select_valor_com_todos(f"Escolha {filtro1}:", df[filtro1])
+    reset_key = st.session_state.get("reset_key", 0)
+
+    # 1º filtro
+    filtro1 = st.sidebar.selectbox(
+        "1º filtro:",
+        opcoes_presentes,
+        key=f"filtro1_{reset_key}"
+    )
+    valor1 = select_valor_com_todos(
+        f"Escolha {filtro1}:",
+        df[filtro1],
+        key=f"valor1_{reset_key}"
+    )
     df_filtrado = df[df[filtro1] == valor1] if valor1 is not None else df.copy()
 
+    # 2º filtro
     opcoes_segundo = [c for c in opcoes_presentes if c != filtro1]
-    filtro2 = st.sidebar.selectbox("2º filtro (opcional):", ["(Nenhum)"] + opcoes_segundo)
+    filtro2 = st.sidebar.selectbox(
+        "2º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_segundo,
+        key=f"filtro2_{reset_key}"
+    )
     if filtro2 != "(Nenhum)" and filtro2 in df_filtrado.columns:
-        valor2 = select_valor_com_todos(f"Escolha {filtro2}:", df_filtrado[filtro2])
+        valor2 = select_valor_com_todos(
+            f"Escolha {filtro2}:",
+            df_filtrado[filtro2],
+            key=f"valor2_{reset_key}"
+        )
         if valor2 is not None:
             df_filtrado = df_filtrado[df_filtrado[filtro2] == valor2]
     else:
         filtro2 = None
         valor2 = None
 
+    # 3º filtro
     opcoes_terceiro = [c for c in opcoes_presentes if c not in [filtro1, filtro2] and c != "(Nenhum)"]
-    filtro3 = st.sidebar.selectbox("3º filtro (opcional):", ["(Nenhum)"] + opcoes_terceiro)
+    filtro3 = st.sidebar.selectbox(
+        "3º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_terceiro,
+        key=f"filtro3_{reset_key}"
+    )
     if filtro3 != "(Nenhum)" and filtro3 in df_filtrado.columns:
-        valor3 = select_valor_com_todos(f"Escolha {filtro3}:", df_filtrado[filtro3])
+        valor3 = select_valor_com_todos(
+            f"Escolha {filtro3}:",
+            df_filtrado[filtro3],
+            key=f"valor3_{reset_key}"
+        )
         if valor3 is not None:
             df_filtrado = df_filtrado[df_filtrado[filtro3] == valor3]
     else:
         filtro3 = None
         valor3 = None
 
+    # 4º filtro
     opcoes_quarto = [c for c in opcoes_presentes if c not in [filtro1, filtro2, filtro3] and c != "(Nenhum)"]
-    filtro4 = st.sidebar.selectbox("4º filtro (opcional):", ["(Nenhum)"] + opcoes_quarto)
+    filtro4 = st.sidebar.selectbox(
+        "4º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_quarto,
+        key=f"filtro4_{reset_key}"
+    )
     if filtro4 != "(Nenhum)" and filtro4 in df_filtrado.columns:
-        valor4 = select_valor_com_todos(f"Escolha {filtro4}:", df_filtrado[filtro4])
+        valor4 = select_valor_com_todos(
+            f"Escolha {filtro4}:",
+            df_filtrado[filtro4],
+            key=f"valor4_{reset_key}"
+        )
         if valor4 is not None:
             df_filtrado = df_filtrado[df_filtrado[filtro4] == valor4]
     else:
         filtro4 = None
         valor4 = None
-
+        
 def fmt(filtro, valor):
     if not filtro:
         return None
@@ -314,8 +391,17 @@ col1, col2 = st.columns([4, 1])
 
 with col1:
     st.title("📊 Painel de Emendas Parlamentares")
-    if valor_selecionado:
-        st.caption(f"Filtros aplicados: {valor_selecionado}")
+        # Texto institucional com data/hora atual formatada
+    data_atual = datetime.now().strftime("%d/%m/%Y às %H:%M:%S")
+    st.markdown(
+        f"""
+        <div style="color:#666; font-size:0.95em; line-height:1.3;">
+            <strong>Secretaria da Saúde - Governo de Pernambuco</strong><br>
+            Última atualização: {data_atual}
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 with col2:
     st.markdown("<div style='margin-top: 35px;'></div>", unsafe_allow_html=True)
@@ -324,6 +410,13 @@ with col2:
     except:
         pass
 
+
+st.subheader("Dados Filtrados")
+if valor_selecionado:
+        st.caption(f"Filtros aplicados: {valor_selecionado}")
+
+st.caption(f"{len(df_filtrado)} registros exibidos após os filtros aplicados.")
+
 st.download_button(
     "⬇️ Exportar Dados",
     data=df_filtrado.to_csv(index=False).encode("utf-8"),
@@ -331,8 +424,6 @@ st.download_button(
     mime="text/csv",
 )
 
-st.subheader("Dados Filtrados")
-st.caption(f"{len(df_filtrado)} registros exibidos após os filtros aplicados.")
 st.dataframe(df_filtrado, use_container_width=True)
 
 st.sidebar.header("Gráficos (configuração)")
