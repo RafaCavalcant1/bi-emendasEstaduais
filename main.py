@@ -1,5 +1,5 @@
 import streamlit as st
-from auth import require_authentication, AuthManager, logout, init_session_state
+from auth import require_authentication, AuthManager, init_session_state
 import unicodedata
 from datetime import datetime
 import pandas as pd
@@ -54,7 +54,7 @@ try:
 except FileNotFoundError:
     pass
 
-SHEET_ID = "1fyzyrSsRuUm8d6jNSeaTIVm8Zps2jLAO5u_xxUF5ox0"
+SHEET_ID = "1EiFehMxLM5DdIBu5ZCdMv4wQpZCf5fYMVdkUzrnqT5w"
 GID = "1186502103"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&gid={GID}"
 
@@ -255,7 +255,7 @@ except Exception as e:
     st.stop()
 
 colunas_desejadas = [
-    "STATUS GERAL", "ANO DA EMENDA", "Nº EMENDA", "Nº REMANEJAMENTO", "SEI",
+    "STATUS GERAL", "STATUS DA EMENDA", "ANO DA EMENDA", "Nº EMENDA", "Nº REMANEJAMENTO", "SIGEPE / SEI",
     "DATA OB MS", "MUNICÍPIO", "ENTIDADE", "SUBAÇÃO", "GRUPO DE DESPESA",
     "MODALIDADE", "VALOR", "PARLAMENTAR", "PARTIDO DO PARLAMENTAR",
     "PENDÊNCIAS", "SETOR ATUAL ROBÔ", "EXECUÇÃO DA EMENDA"
@@ -294,14 +294,14 @@ def select_valor_com_todos(rotulo: str, serie: pd.Series, key: str):
     return None if escolha == "(Todos)" else escolha
 
 # --- Configuração dos filtros ---
-PRIMEIRAS_OPCOES = ["Nº EMENDA", "SUBAÇÃO", "ANO DA EMENDA", "PARLAMENTAR"]
+PRIMEIRAS_OPCOES = ["Nº EMENDA", "SUBAÇÃO", "ANO DA EMENDA", "PARLAMENTAR", "STATUS DA EMENDA"]
 opcoes_presentes = [c for c in PRIMEIRAS_OPCOES if c in df.columns]
 
 if not opcoes_presentes:
     st.sidebar.warning("⚠️ Nenhuma das colunas de filtro iniciais existe na planilha.")
     df_filtrado = df.copy()
-    filtro1 = filtro2 = filtro3 = filtro4 = None
-    valor1 = valor2 = valor3 = valor4 = None
+    filtro1 = filtro2 = filtro3 = filtro4 = filtro5 = None
+    valor1 = valor2 = valor3 = valor4 = valor5 = None
 else:
     reset_key = st.session_state.get("reset_key", 0)
 
@@ -374,6 +374,25 @@ else:
     else:
         filtro4 = None
         valor4 = None
+
+    # 5º filtro
+    opcoes_quinto = [c for c in opcoes_presentes if c not in [filtro1, filtro2, filtro3, filtro4] and c != "(Nenhum)"]
+    filtro5 = st.sidebar.selectbox(
+        "5º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_quinto,
+        key=f"filtro5_{reset_key}"
+    )
+    if filtro5 != "(Nenhum)" and filtro5 in df_filtrado.columns:
+        valor5 = select_valor_com_todos(
+            f"Escolha {filtro5}:",
+            df_filtrado[filtro5],
+            key=f"valor5_{reset_key}"
+        )
+        if valor5 is not None:
+            df_filtrado = df_filtrado[df_filtrado[filtro5] == valor5]
+    else:
+        filtro5 = None
+        valor5 = None
         
 def fmt(filtro, valor):
     if not filtro:
@@ -385,6 +404,7 @@ valor_selecionado = " • ".join([x for x in [
     fmt(filtro2, valor2),
     fmt(filtro3, valor3),
     fmt(filtro4, valor4),
+    fmt(filtro5, valor5),
 ] if x])
 
 col1, col2 = st.columns([4, 1])
@@ -409,7 +429,6 @@ with col2:
         st.image("logo.svg", width=200)
     except:
         pass
-
 
 st.subheader("Dados Filtrados")
 if valor_selecionado:
