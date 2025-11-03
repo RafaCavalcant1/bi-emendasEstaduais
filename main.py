@@ -294,14 +294,14 @@ def select_valor_com_todos(rotulo: str, serie: pd.Series, key: str):
     return None if escolha == "(Todos)" else escolha
 
 # --- Configuração dos filtros ---
-PRIMEIRAS_OPCOES = ["Nº EMENDA", "SUBAÇÃO", "ANO DA EMENDA", "PARLAMENTAR", "STATUS DA EMENDA"]
+PRIMEIRAS_OPCOES = ["Nº EMENDA", "SUBAÇÃO", "ANO DA EMENDA", "PARLAMENTAR", "STATUS DA EMENDA", "MUNICÍPIO", "ENTIDADE", "MODALIDADE"]
 opcoes_presentes = [c for c in PRIMEIRAS_OPCOES if c in df.columns]
 
 if not opcoes_presentes:
     st.sidebar.warning("⚠️ Nenhuma das colunas de filtro iniciais existe na planilha.")
     df_filtrado = df.copy()
-    filtro1 = filtro2 = filtro3 = filtro4 = filtro5 = None
-    valor1 = valor2 = valor3 = valor4 = valor5 = None
+    filtro1 = filtro2 = filtro3 = filtro4 = filtro5 = filtro6 = filtro7 = filtro8 = None
+    valor1 = valor2 = valor3 = valor4 = valor5 = valor6 = valor7 = valor8 = None
 else:
     reset_key = st.session_state.get("reset_key", 0)
 
@@ -393,6 +393,63 @@ else:
     else:
         filtro5 = None
         valor5 = None
+
+    # 6º filtro
+    opcoes_sexto = [c for c in opcoes_presentes if c not in [filtro1, filtro2, filtro3, filtro4, filtro5] and c != "(Nenhum)"]
+    filtro6 = st.sidebar.selectbox(
+        "6º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_sexto,
+        key=f"filtro6_{reset_key}"
+    )
+    if filtro6 != "(Nenhum)" and filtro6 in df_filtrado.columns:
+        valor6 = select_valor_com_todos(
+            f"Escolha {filtro6}:",
+            df_filtrado[filtro6],
+            key=f"valor6_{reset_key}"
+        )
+        if valor6 is not None:
+            df_filtrado = df_filtrado[df_filtrado[filtro6] == valor6]
+    else:
+        filtro6 = None
+        valor6 = None
+
+    # 7º filtro
+    opcoes_setimo = [c for c in opcoes_presentes if c not in [filtro1, filtro2, filtro3, filtro4, filtro5, filtro6] and c != "(Nenhum)"]
+    filtro7 = st.sidebar.selectbox(
+        "7º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_setimo,
+        key=f"filtro7_{reset_key}"
+    )
+    if filtro7 != "(Nenhum)" and filtro7 in df_filtrado.columns:
+        valor7 = select_valor_com_todos(
+            f"Escolha {filtro7}:",
+            df_filtrado[filtro7],
+            key=f"valor7_{reset_key}"
+        )
+        if valor7 is not None:
+            df_filtrado = df_filtrado[df_filtrado[filtro7] == valor7]
+    else:
+        filtro7 = None
+        valor7 = None
+    
+    # 8º filtro
+    opcoes_oitavo = [c for c in opcoes_presentes if c not in [filtro1, filtro2, filtro3, filtro4, filtro5, filtro6, filtro7] and c != "(Nenhum)"]
+    filtro8 = st.sidebar.selectbox(
+        "8º filtro (opcional):",
+        ["(Nenhum)"] + opcoes_oitavo,
+        key=f"filtro8_{reset_key}"
+    )
+    if filtro8 != "(Nenhum)" and filtro8 in df_filtrado.columns:
+        valor8 = select_valor_com_todos(
+            f"Escolha {filtro8}:",
+            df_filtrado[filtro8],
+            key=f"valor8_{reset_key}"
+        )
+        if valor8 is not None:
+            df_filtrado = df_filtrado[df_filtrado[filtro8] == valor8]
+    else:
+        filtro8 = None
+        valor8 = None
         
 def fmt(filtro, valor):
     if not filtro:
@@ -405,6 +462,9 @@ valor_selecionado = " • ".join([x for x in [
     fmt(filtro3, valor3),
     fmt(filtro4, valor4),
     fmt(filtro5, valor5),
+    fmt(filtro6, valor6),
+    fmt(filtro7, valor7),
+    fmt(filtro8, valor8),
 ] if x])
 
 col1, col2 = st.columns([4, 1])
