@@ -13,40 +13,75 @@ auth_manager = AuthManager(credentials_file="credentials.json")
 
 if not require_authentication(auth_manager, logo_path="logo.svg"):
     st.stop()
+
+def atualizar_cache_e_rerun():
+    """Limpa o cache de carregar_planilha_xlsx e recarrega a página."""
+    try:
+        carregar_dados.clear()  # limpa só o cache dessa função
+    except Exception:
+        # fallback: limpa todos os caches de dados, se necessário
+        st.cache_data.clear()
+    # opcional: marca um timestamp para exibir no UI se quiser
+    st.session_state["reset_key"] = datetime.now().timestamp()
+    st.rerun()
 # ===============================
 # 🔹 CABEÇALHO DO SISTEMA
 # ===============================
 with st.container():
-    st.markdown(
-        """
-        <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 10px 10px 10px;
-        ">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 26px;">👤</span>
-                <h2 style="margin: 0; color: #0C2856;">SES-PE <span style="font-weight:400;">(sespe)</span></h2>
+    col1, col2 = st.columns([4, 1.1])  # espaço extra p/ 2 botões
+
+    with col1:
+        st.markdown(
+            """
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:26px;">👤</span>
+                <h2 style="margin:0;color:#0C2856;">
+                    SES-PE <span style="font-weight:400;">(sespe)</span>
+                </h2>
             </div>
-            <form action="#" method="post">
-                <button type="submit" style="
-                    background-color: #004080;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    padding: 6px 16px;
-                    font-size: 15px;
-                    font-weight: 600;
-                    cursor: pointer;
-                ">Logout</button>
-            </form>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+            """,
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        # Estilo único para os dois botões do topo
+        st.markdown(
+            """
+            <style>
+            .top-actions button {
+                width: 120px !important;
+                height: 36px !important;
+                background-color:#0C2856 !important;
+                color:white !important;
+                border:none !important;
+                border-radius:8px !important;
+                font-size:15px !important;
+                margin-left:8px !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # Dois botões lado a lado
+        bcol1, bcol2 = st.columns([1, 1])
+        with bcol1:
+            st.markdown('<div class="top-actions">', unsafe_allow_html=True)
+            if st.button("Atualizar", key="refresh_btn"):
+                atualizar_cache_e_rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        with bcol2:
+            st.markdown('<div class="top-actions">', unsafe_allow_html=True)
+            if st.button("Logout", key="logout_btn"):
+                for key in list(st.session_state.keys()):
+                    st.session_state.pop(key, None)
+                st.session_state["authenticated"] = False
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
 st.divider()
+
 
 try:
     with open("main_style.css", "r", encoding="utf-8") as f:
