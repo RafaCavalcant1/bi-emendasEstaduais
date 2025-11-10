@@ -91,7 +91,8 @@ except FileNotFoundError:
 
 SHEET_ID = "1EiFehMxLM5DdIBu5ZCdMv4wQpZCf5fYMVdkUzrnqT5w"
 GID = "1186502103"
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/gviz/tq?tqx=out:csv&gid={GID}"
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SHEET_ID}/export?format=csv&gid={GID}"
+
 
 CONFIG_MODEBAR = {
     "displaylogo": False,
